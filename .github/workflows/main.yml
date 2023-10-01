@@ -24,6 +24,8 @@ jobs:
       # Publishes Blazor project to the release-folder
     - name: Publish .NET Core Project
       run: dotnet publish GTA5CharacterGuesser.csproj -c:Release -p:GHPages=true -o dist/Web --nologo
+    - name: Change base-tag in index.html from / to GTA5CharacterGuesser
+      run: sed -i 's/<base href="\/" \/>/<base href="\/GTA5CharacterGuesser\/" \/>/g' dist/Web/wwwroot/index.html
     - name: Commit wwwroot to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@3.7.1
       with:
