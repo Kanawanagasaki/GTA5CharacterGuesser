@@ -1,0 +1,76 @@
+{
+    "levels": [
+        {
+            "title": "Easy",
+            "order": 0,
+            "lines": [
+                {
+                    "text": "You forget a thousand things everyday, how about you make sure this is one of them",
+                    "audio": "audio/michael.mp3",
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                },
+                {
+                    "text": null,
+                    "audio": "audio/michael.mp3",
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                },
+                {
+                    "text": "You forget a thousand things everyday, how about you make sure this is one of them",
+                    "audio": null,
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                }
+            ]
+        },
+        {
+            "title": "Normal",
+            "order": 0,
+            "lines": [
+                {
+                    "text": "You forget a thousand things everyday, how about you make sure this is one of them",
+                    "audio": "audio/michael.mp3",
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                },
+                {
+                    "text": null,
+                    "audio": "audio/michael.mp3",
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                },
+                {
+                    "text": "You forget a thousand things everyday, how about you make sure this is one of them",
+                    "audio": null,
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                }
+            ]
+        },
+        {
+            "title": "Hard",
+            "order": 0,
+            "lines": [
+                {
+                    "text": "You forget a thousand things everyday, how about you make sure this is one of them",
+                    "audio": "audio/michael.mp3",
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                },
+                {
+                    "text": null,
+                    "audio": "audio/michael.mp3",
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                },
+                {
+                    "text": "You forget a thousand things everyday, how about you make sure this is one of them",
+                    "audio": null,
+                    "answer": "Michael De Santa",
+                    "youtube": "LjSMpwY4_hw"
+                }
+            ]
+        }
+    ]
+}
