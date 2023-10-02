@@ -30,6 +30,6 @@ public partial class Index : ComponentBase
     private void OnStartClick()
     {
         if (Data.IsInitialized)
-            NavMgr.NavigateTo("/guess");
+            NavMgr.NavigateTo("guess");
     }
 }
