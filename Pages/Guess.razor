@@ -1,0 +1,229 @@
+@page "/guess"
+
+@{
+    var level = Data.GetLevel(_levelIndex);
+    var line = Data.GetLine(_levelIndex, _lineIndex);
+
+    var minPts = level.MinScore;
+    var maxPts = level.MaxScore;
+
+    if(_revealAudio)
+    {
+        minPts -= level.HintPenalty;
+        maxPts -= level.HintPenalty;
+    }
+
+    var headerText = $"; Line {_lineIndex + 1}/{level.Lines.Length}; Score: {_score}";
+    int headerTextLength = (int)((DateTimeOffset.UtcNow - _levelOutAnimTime) / TimeSpan.FromMilliseconds(30));
+    headerText = headerText.Substring(0, Math.Min(headerTextLength, headerText.Length));
+    
+    var guessTimeSpan = TimeSpan.FromMilliseconds(level.Timer);
+    var guessEndTime = _guessStartTime + guessTimeSpan;
+    var guessTimeLeft = guessEndTime - DateTimeOffset.UtcNow;
+    var guessTimeProgress = guessTimeLeft / guessTimeSpan;
+    if (guessTimeProgress < 0)
+        guessTimeProgress = 0;
+
+    var currentPts = (int)Math.Round(minPts + (maxPts - minPts) * guessTimeProgress);
+
+    var validGuess = Data.HasCharacter(_guessInput);
+}
+
+<div class="root">
+    @if(!_isFinished)
+    {
+        <div class='header
+            @(_state switch
+            {
+                EGuessState.LevelIn => "header-animate-in",
+                EGuessState.LevelOut => "header-animate-out",
+                _ => ""
+            })
+            @(_state == EGuessState.ResultOut && Data.IsLastLine(_levelIndex, _lineIndex) ? "header-animate-result-out" : "")'>
+            Level @(_levelIndex + 1), @(level.Title)
+            @if (_state != EGuessState.LevelIn && _state != EGuessState.LevelOut)
+            {
+                <text>@headerText</text>
+            }
+        </div>
+        @if (_state == EGuessState.Guess || _state == EGuessState.GuessOut)
+        {
+            <div class='body @(_state == EGuessState.GuessOut ? "body-animate-out" : "")'>
+                <div class="timer">
+                    <div>
+                        @(minPts)p
+                    </div>
+                    <div class="timer-progress-bar-wrapper">
+                        <div class="timer-progress-bar-border">
+                            <div class="timer-progress-bar" style="width: @(guessTimeProgress * 100)%;"></div>
+                        </div>
+                        <div class="timer-cursor" style="left: @(guessTimeProgress * 100)%;">
+                            @(currentPts)p
+                        </div>
+                    </div>
+                    <div>
+                        @(maxPts)p
+                    </div>
+                </div>
+                <div class="guess">
+                    <div class="guess-table">
+                        <div class="guess-picture"></div>
+                        <div class="guess-content">
+                            <div>
+                                Who said this line:
+                            </div>
+                            <div class="line">
+                                <code>
+                                    @line.Text
+                                </code>
+                                @if (!_revealAudio && line.Audio is not null)
+                                {
+                                    <div class="divider"></div>
+                                    <div class="audio" style="background-image: url(img/play.png);" @onclick=@(_=>_revealAudio=true)></div>
+                                }
+                            </div>
+                            @if (_revealAudio)
+                            {
+                                <audio controls autoplay class="actual-audio">
+                                    <source src=@(line.Audio) type="audio/mp3">
+                                </audio>
+                            }
+                        </div>
+                    </div>
+                    @if(_guessedUsers.Count > 0)
+                    {
+                        <div>
+                            Chat made @(_guessedUsers.Count) guess@(_guessedUsers.Count > 1 ? "es" : "")
+                        </div>
+                    }
+                </div>
+                <div class="input-form">
+                    <div class="guess-input-wrapper">
+                        <input type="text" class="guess-input" @bind=@_guessInput @bind:event="oninput" />
+                        @if (!string.IsNullOrWhiteSpace(_guessInput) && !validGuess)
+                        {
+                            var options = Data.GetCharacterOptions(_guessInput);
+                            var count = options.Count();
+                            if (count > 0)
+                            {
+                                <div class="guess-form-hint">
+                                    @foreach (var option in options.Take(5))
+                                    {
+                                        <div class="guess-form-hint-item" @onclick=@(_=>_guessInput = option)>
+                                            @option
+                                        </div>
+                                    }
+                                    @if (count > 5)
+                                    {
+                                        <div class="guess-form-hint-dots">
+                                            @(count - 5) hidden...
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                    <button disabled=@(!validGuess) @onclick=@OnGuess>Guess</button>
+                </div>
+            </div>
+        }
+        else if (_state == EGuessState.Result || _state == EGuessState.ResultOut)
+        {
+            <div class='body @(_state == EGuessState.ResultOut ? "body-animate-out" : "")'>
+                <div class="result">
+                    <div class="result-text">
+                        <span class='@(_resultCorrect ? "result-correct" : "result-incorrect")'>
+                            @(_resultCorrect ? "Correct" : "Incorrect")!
+                        </span>
+                        <span>
+                            This line was said by <i>@(line.Answer)</i> !
+                        </span>
+                    </div>
+                    @if(!_resultPlayVideo)
+                    {
+                        <div class="guess-table">
+                            <div class="guess-picture" style="background-image: url(img/characters/@(line.Answer.Replace(" ", "%20")).png);"></div>
+                            <div class="guess-content">
+                                <div class="line">
+                                    <code>
+                                        @line.Text
+                                    </code>
+                                </div>
+                                @if (line.Audio is not null)
+                                {
+                                    <audio controls class="actual-audio">
+                                        <source src=@(line.Audio) type="audio/mp3">
+                                    </audio>
+                                }
+                                @if(line.Video is not null)
+                                {
+                                    <button class="small" @onclick=@(_=>_resultPlayVideo = true)>Play video</button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="result-video">
+                            <video width="600" controls autoplay>
+                                <source src=@line.Video />
+                            </video>
+                            <button class="small" @onclick=@(_=>_resultPlayVideo = false)>Hide video</button>
+                        </div>
+                    }
+                </div>
+                <div class="result-chat">
+                    @if(_characterNameToGuessCount.Count > 0 && !_resultPlayVideo)
+                    {
+                        <div>
+                            Chat result:
+                        </div>
+
+                        var sorted = _characterNameToGuessCount
+                                        .Select(x => new { Name = x.Key, Count = x.Value })
+                                        .OrderByDescending(x => x.Count)
+                                        .Take(5)
+                                        .ToArray();
+                        var total = (double)sorted.Sum(x => x.Count);
+                        var style = string.Join(" ", sorted.Select(x => Math.Round(x.Count / total * 100) + "fr"));
+
+                        <div class="result-chat-grid" style=@(sorted.Length > 0 ? $"grid-template-columns:{style};" : "")>
+                            @foreach(var item in sorted)
+                            {
+                                <div>
+                                    @(item.Name) - @($"{item.Count / total * 100:0.##}%")
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <button class="result-continue" @onclick=@OnContinue>Continue</button>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="finish">
+            <div>
+                Done, it is it, your score is @(_score) / @(Data.GetMaxPossibleScore())
+            </div>
+            @if(_chatGuesses.Count > 0)
+            {
+                <div>
+                    Here is chat results:
+                </div>
+
+                var sorted = _chatGuesses.Values.OrderByDescending(x => x.TotalPoints).Take(6);
+                @foreach(var kv in sorted)
+                {
+                    <div>
+                        @(kv.DisplayName): @(kv.TotalPoints)
+                    </div>
+                }
+            }
+            <button class="finish-main-menu" @onclick=@(_=>NavMgr.NavigateTo("/"))>
+                Main Menu
+            </button>
+        </div>
+    }
+</div>

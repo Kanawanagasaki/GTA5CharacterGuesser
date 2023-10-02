@@ -1,129 +1,49 @@
-﻿@page "/"
+@page "/"
 
 <div class="root">
-    @if (_isDownloading)
-    {
-        <div class="downloading">
-            Loading...
-        </div>
-    }
-    else if (!_isSuccessfulDownlaod || _data is null)
-    {
-        <div class="error">
-            Something terrible happened while downloading <code>data.json</code>
-        </div>
-    }
-    else if (!_isStarted)
-    {
-        <div class="welcome">
+    <div class="content">
+        <div>
             <div>
-                This is a game where you need to guess characters from popular game GTA V by their lines from the
-                game.<br />
-                Can you guess them all?<br />
-                <br />
-                There are 3 levels, try your best
+                This is a game where you need to guess characters from popular game GTA V by their lines from the game.
             </div>
-            <button @onclick=@(_=>_isStarted = true)>
-                Start
-            </button>
-        </div>
-    }
-    else if (_isFinished)
-    {
-        <div class="finish">
             <div>
-                It is over, good job, your score:
+                Can you guess them all?
             </div>
-            @foreach (var l in _data.Levels)
+            <div>
+                There are 3 levels, try your best.
+            </div>
+        </div>
+        <div>
+            <div>
+                Dear chat, you are participaiting as well! So try your best too!
+            </div>
+            <div>
+                In order to guess you need to type full name of the character into the chat.
+            </div>
+            <div>
+                For example: if you think that line was said by Michael you need to send <i
+                    style="color: #007bff">"Michael De Santa"</i>
+            </div>
+            @if (_correctMessage is not null)
             {
                 <div>
-                    @(l.Title): @(l.Lines.Where(x => x.IsGuessedCorrectly).Count()) / @(l.Lines.Length)
-                </div>
-            }
-            <button @onclick=@OnRestart>
-                Start again
-            </button>
-        </div>
-    }
-    else
-    {
-        var level = _data.Levels[_levelIndex];
-        var line = level.Lines[_lineIndex];
-
-        <div class="levels">
-            @foreach (var l in _data.Levels)
-            {
-                <div class="level">
-                    <div>
-                        @(l.Title)
-                    </div>
-                    <div>
-                        @(l.Lines.Where(x => x.IsGuessedCorrectly).Count()) / @(l.Lines.Length)
-                    </div>
+                    <span style="color: #28a745">@(_correctMessage.UserDisplayName)</span> correctly typed <i
+                        style="color: #007bff">"@(_correctMessage.Message)"</i> in the chat with the correct formatting,
+                    this message will count in a quiz
                 </div>
             }
         </div>
-        <div class="level-fields">
-            @if (_isGuessing)
+    </div>
+    <div class="footer">
+        <button @onclick=@OnStartClick disabled=@(!Data.IsInitialized)>
+            @if (Data.IsInitialized)
             {
-                if (line.Text is not null)
-                {
-                    <div class="line-text">
-                        Who said this line: "@(line.Text)"?
-                    </div>
-                }
-                if (line.Audio is not null)
-                {
-                    <audio controls style="width: 100%;">
-                        <source src=@(line.Audio) type="audio/mp3">
-                        Your browser does not support the audio element.
-                    </audio>
-                }
-                <div class="guess-form">
-                    <div class="guess-form-input-wrapper">
-                        <input type="text" class="guess-form-input" @bind=@_guess @bind:event="oninput" />
-                        @if (!string.IsNullOrWhiteSpace(_guess) && !_characters.Any(x => x.ToLower() == _guess.ToLower()))
-                        {
-                            var options = _characters.Where(x => x.ToLower().Contains(_guess.Trim().ToLower())).ToArray();
-                            if (options.Length > 0)
-                            {
-                                <div class="guess-form-hint">
-                                    @foreach (var option in options.Take(5))
-                                    {
-                                        <div class="guess-form-hint-item" @onclick=@(_=>_guess = option)>
-                                            @option
-                                        </div>
-                                    }
-                                    @if (options.Length > 5)
-                                    {
-                                        <div class="guess-form-hint-dots">
-                                            @(options.Length - 5) hidden...
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        }
-                    </div>
-                    <button @onclick=@OnGuess>Guess</button>
-                </div>
+                <text>Start</text>
             }
             else
             {
-                <div class="guess-result">
-                    <div class='guess-confirmation @(_isGuessCorrect ? "correct" : "incorrect")'>
-                        @(_isGuessCorrect ? "Correct!" : "Incorrect!")
-                    </div>
-                    <div>
-                        This line was said by @(line.Answer)
-                    </div>
-                    <div>
-                        <iframe width="560" height="315" src="https://www.youtube.com/embed/@(line.Youtube)" frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen></iframe>
-                    </div>
-                    <button @onclick=@OnContinue>Continue</button>
-                </div>
+                <text>Loading...</text>
             }
-        </div>
-    }
+        </button>
+    </div>
 </div>
