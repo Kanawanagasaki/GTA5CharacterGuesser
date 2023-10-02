@@ -20,7 +20,9 @@ html, body, #app {
     flex-direction: column;
 
     background: #1f1f1f;
-    color: #d8d8d8;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 200;
 }
 
 .loading {
@@ -36,7 +38,7 @@ html, body, #app {
     margin: auto;
     margin-bottom: 4rem;
 
-    border: 1px solid #d8d8d8;
+    border: 1px solid white;
 }
 
 .loading-progress {
@@ -56,7 +58,7 @@ html, body, #app {
 
     border-radius: 1rem;
 
-    background: #d8d8d8;
+    background: white;
 }
 
 /* CSS */
@@ -68,7 +70,6 @@ button {
     box-shadow: rgba(0, 0, 0, 0.02) 0 1px 3px 0;
     box-sizing: border-box;
     color: rgba(0, 0, 0, 0.85);
-    cursor: pointer;
     display: inline-flex;
     font-size: 16px;
     font-weight: 600;
@@ -87,23 +88,37 @@ button {
     width: auto;
 }
 
-button:hover,
-button:focus {
+button.small {
+    font-size: 13px;
+    min-height: 2rem;
+    padding: calc(.375rem - 1px) calc(1.5rem - 1px);
+    
+    border: 1px solid white;
+    background-color: transparent;
+    color: white;
+}
+
+button:not([disabled]) {
+    cursor: pointer;
+}
+
+button[disabled] {
+    background-color: #888;
+}
+
+button:not([disabled]):hover,
+button:not([disabled]):focus {
     border-color: rgba(0, 0, 0, 0.15);
     box-shadow: rgba(0, 0, 0, 0.1) 0 4px 12px;
-    color: rgba(1, 0, 0, 0.65);
 }
 
-button:hover {
+button.small:not([disabled]):hover,
+button.small:not([disabled]):focus {
+    border-color: white;
+}
+
+button:not([disabled]):hover {
     transform: translateY(-2px);
-}
-
-button:active {
-    background-color: #F0F0F1;
-    border-color: rgba(0, 0, 0, 0.15);
-    box-shadow: rgba(0, 0, 0, 0.06) 0 2px 4px;
-    color: rgba(0, 0, 0, 0.65);
-    transform: translateY(0);
 }
 
 #blazor-error-ui {
