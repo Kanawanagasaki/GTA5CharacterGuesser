@@ -2,7 +2,7 @@ const twitchChatListeners = [];
 const framesListeners = [];
 
 const client = new tmi.Client({
-    channels: ["kanawanagasaki"]
+    channels: ["darkviperau"]
 });
 var reconnectTimeout = null;
 
