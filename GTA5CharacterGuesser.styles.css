@@ -68,12 +68,26 @@
 }
 
 .header[b-lduyjfn2o9] {
-    display: flex;
-
-    justify-content: center;
+    display: grid;
 
     height: 1.5rem;
     color: #ffc107;
+
+    transition: grid-template-columns .2s ease;
+
+    margin-top: .5rem;
+}
+
+.header > div[b-lduyjfn2o9] {
+    display: flex;
+    
+    justify-content: center;
+    justify-self: center;
+
+    text-wrap: nowrap;
+
+    transition: width .2s ease;
+    overflow: hidden;
 }
 
 .header-animate-in[b-lduyjfn2o9] {
@@ -157,17 +171,13 @@
     }
 }
 
-.timer[b-lduyjfn2o9] {
-    display: flex;
-    gap: 1rem;
-}
-
-.timer-progress-bar-wrapper[b-lduyjfn2o9] {
+.score-bar-wrapper[b-lduyjfn2o9] {
     position: relative;
-    flex-grow: 1;
+    height: 1.2rem;
+    margin: 0 1rem;
 }
 
-.timer-progress-bar-border[b-lduyjfn2o9] {
+.score-bar-border[b-lduyjfn2o9] {
     position: relative;
     height: 100%;
     width: 100%;
@@ -176,7 +186,18 @@
     overflow: hidden;
 }
 
-.timer-progress-bar[b-lduyjfn2o9] {
+.score-bar-red[b-lduyjfn2o9] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+
+    background-color: #dc3545;
+
+    transition: width .2s .2s ease;
+}
+
+.score-bar[b-lduyjfn2o9] {
     position: absolute;
     top: 0;
     left: 0;
@@ -184,18 +205,18 @@
 
     background-color: white;
 
-    transition: all 16ms ease;
+    transition: width .2s ease;
 }
 
-.timer-cursor[b-lduyjfn2o9] {
+.score-cursor[b-lduyjfn2o9] {
     position: absolute;
     top: 0;
 
     transform: translate(-35%, 150%);
-    transition: all 16ms ease;
+    transition: left .3s ease;
 }
 
-.timer-cursor[b-lduyjfn2o9]::before {
+.score-cursor[b-lduyjfn2o9]::before {
     content: "";
     position: absolute;
     width: .5rem;
@@ -203,7 +224,6 @@
     border-left: 2px solid white;
     border-top: 2px solid white;
     transform: translate(50%, -50%) rotate(45deg);
-    
 }
 
 .guess[b-lduyjfn2o9] {
@@ -261,17 +281,37 @@
     border-left: 1px solid white;
 }
 
-.audio[b-lduyjfn2o9] {
-    width: 2rem;
-    cursor: pointer;
+.audio-wrapper[b-lduyjfn2o9] {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    width: 2.5rem;
 
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
+    cursor: pointer;
 }
 
-.actual-audio[b-lduyjfn2o9] {
+.audio[b-lduyjfn2o9] {
     width: 100%;
+}
+
+.audio-pentalty[b-lduyjfn2o9] {
+    color: #dc3545;
+    font-size: .85rem;
+}
+
+.chat-guesses[b-lduyjfn2o9] {
+    display: grid;
+    gap: 2px;
+    margin-bottom: .5rem;
+}
+
+.chat-guesses > div[b-lduyjfn2o9] {
+    padding: 2px 8px;
+    background-color: #89289280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
 }
 
 .input-form[b-lduyjfn2o9] {
@@ -401,6 +441,48 @@
     gap: 1rem;
 }
 
+.finish-header[b-lduyjfn2o9] {
+    font-size: 1.5rem;
+    text-align: center;
+    color: #ffc107;
+}
+
+.finish-table-wrapper[b-lduyjfn2o9] {
+    flex-grow: 1;
+    height: 0;
+    overflow: auto;
+}
+
+.finish-table-wrapper[b-lduyjfn2o9]::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+    background: transparent;
+}
+
+.finish-table-wrapper[b-lduyjfn2o9]::-webkit-scrollbar-thumb {
+    background: #0008;
+    -webkit-border-radius: 1ex;
+    -webkit-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.finish-table[b-lduyjfn2o9] {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+
+}
+.finish-table th[b-lduyjfn2o9], 
+.finish-table td[b-lduyjfn2o9] {
+    text-align: center;
+    padding: 8px;
+}
+
+.finish-table th[b-lduyjfn2o9] {
+    background: black;
+    position: sticky;
+    top: 0;
+}
+
 .finish-main-menu[b-lduyjfn2o9] {
     margin-top: auto;
 }
@@ -413,22 +495,46 @@ hr[b-5cxg0vvgmy] {
     display: flex;
     flex-direction: column;
 
+    gap: 1rem;
+
     width: 100%;
     height: 100%;
 }
 
 .content[b-5cxg0vvgmy] {
-    display: flex;
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: .5rem;
     flex-grow: 1;
-    flex-direction: column;
 
-    justify-content: space-evenly;
+    padding: 1rem;
+    height: 0;
 }
 
 .content>div[b-5cxg0vvgmy] {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: .5rem;
+    overflow: hidden;
+}
+
+.chat-messages[b-5cxg0vvgmy] {
+    display: flex;
+    flex-direction: column-reverse;
+    flex-grow: 1;
+    gap: .25rem;
+    padding: 0 .5rem;
+    border-radius: 8px;
+    background: black;
+
+    overflow: hidden;
+
+    font-size: .85rem;
+}
+
+.chat-messages-hint[b-5cxg0vvgmy] {
+    color: #666;
 }
 
 .footer[b-5cxg0vvgmy] {
