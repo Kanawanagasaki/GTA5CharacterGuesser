@@ -127,4 +127,7 @@ public class DataService
 
     public int GetMaxPossibleScore()
         => _model is null ? 0 : _model.Levels.Sum(x => x.Lines.Length * x.MaxScore);
+
+    public int GetLevelsAmount()
+        => _model is null ? 0 : _model.Levels.Length;
 }

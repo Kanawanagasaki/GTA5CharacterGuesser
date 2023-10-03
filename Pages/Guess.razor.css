@@ -7,12 +7,26 @@
 }
 
 .header {
-    display: flex;
-
-    justify-content: center;
+    display: grid;
 
     height: 1.5rem;
     color: #ffc107;
+
+    transition: grid-template-columns .2s ease;
+
+    margin-top: .5rem;
+}
+
+.header > div {
+    display: flex;
+    
+    justify-content: center;
+    justify-self: center;
+
+    text-wrap: nowrap;
+
+    transition: width .2s ease;
+    overflow: hidden;
 }
 
 .header-animate-in {
@@ -96,17 +110,13 @@
     }
 }
 
-.timer {
-    display: flex;
-    gap: 1rem;
-}
-
-.timer-progress-bar-wrapper {
+.score-bar-wrapper {
     position: relative;
-    flex-grow: 1;
+    height: 1.2rem;
+    margin: 0 1rem;
 }
 
-.timer-progress-bar-border {
+.score-bar-border {
     position: relative;
     height: 100%;
     width: 100%;
@@ -115,7 +125,18 @@
     overflow: hidden;
 }
 
-.timer-progress-bar {
+.score-bar-red {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+
+    background-color: #dc3545;
+
+    transition: width .2s .2s ease;
+}
+
+.score-bar {
     position: absolute;
     top: 0;
     left: 0;
@@ -123,18 +144,18 @@
 
     background-color: white;
 
-    transition: all 16ms ease;
+    transition: width .2s ease;
 }
 
-.timer-cursor {
+.score-cursor {
     position: absolute;
     top: 0;
 
     transform: translate(-35%, 150%);
-    transition: all 16ms ease;
+    transition: left .3s ease;
 }
 
-.timer-cursor::before {
+.score-cursor::before {
     content: "";
     position: absolute;
     width: .5rem;
@@ -142,7 +163,6 @@
     border-left: 2px solid white;
     border-top: 2px solid white;
     transform: translate(50%, -50%) rotate(45deg);
-    
 }
 
 .guess {
@@ -200,17 +220,37 @@
     border-left: 1px solid white;
 }
 
-.audio {
-    width: 2rem;
-    cursor: pointer;
+.audio-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    width: 2.5rem;
 
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
+    cursor: pointer;
 }
 
-.actual-audio {
+.audio {
     width: 100%;
+}
+
+.audio-pentalty {
+    color: #dc3545;
+    font-size: .85rem;
+}
+
+.chat-guesses {
+    display: grid;
+    gap: 2px;
+    margin-bottom: .5rem;
+}
+
+.chat-guesses > div {
+    padding: 2px 8px;
+    background-color: #89289280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
 }
 
 .input-form {
@@ -338,6 +378,48 @@
     height: 100%;
     
     gap: 1rem;
+}
+
+.finish-header {
+    font-size: 1.5rem;
+    text-align: center;
+    color: #ffc107;
+}
+
+.finish-table-wrapper {
+    flex-grow: 1;
+    height: 0;
+    overflow: auto;
+}
+
+.finish-table-wrapper::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+    background: transparent;
+}
+
+.finish-table-wrapper::-webkit-scrollbar-thumb {
+    background: #0008;
+    -webkit-border-radius: 1ex;
+    -webkit-box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.finish-table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+
+}
+.finish-table th, 
+.finish-table td {
+    text-align: center;
+    padding: 8px;
+}
+
+.finish-table th {
+    background: black;
+    position: sticky;
+    top: 0;
 }
 
 .finish-main-menu {

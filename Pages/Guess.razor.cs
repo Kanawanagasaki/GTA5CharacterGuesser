@@ -6,7 +6,7 @@ using GTA5CharacterGuesser.Models;
 using GTA5CharacterGuesser.Services;
 using Microsoft.JSInterop;
 
-public partial class Guess : ComponentBase, IAsyncDisposable
+public partial class Guess : ComponentBase, IDisposable
 {
     [Inject] public required DataService Data { get; init; }
     [Inject] public required TwitchChatService Chat { get; init; }
@@ -18,11 +18,12 @@ public partial class Guess : ComponentBase, IAsyncDisposable
     private int _levelIndex = 0;
     private int _lineIndex = 0;
     private EGuessState _state = EGuessState.LevelIn;
-    private DateTimeOffset _levelOutAnimTime = DateTimeOffset.UtcNow;
-    private DateTimeOffset _guessStartTime = DateTimeOffset.UtcNow;
+    private int _roundScore = 0;
     private int _score = 0;
+    private int[] _roundsScores = Array.Empty<int>();
 
-    private bool _revealAudio = false;
+    private bool _isAudioPlayed = false;
+    private bool _isAudioPlaying = false;
 
     private string _guessInput = string.Empty;
 
@@ -32,7 +33,6 @@ public partial class Guess : ComponentBase, IAsyncDisposable
     private Dictionary<string, int> _characterNameToGuessCount = new();
 
     private bool _resultCorrect = false;
-    private int _resultPoints = 0;
     private bool _resultPlayVideo = false;
 
     private bool _isFinished = false;
@@ -44,10 +44,13 @@ public partial class Guess : ComponentBase, IAsyncDisposable
 
     protected override async Task OnInitializedAsync()
     {
-        await Js.InvokeVoidAsync("framesAddListener", _thisRef);
-
         while (!Data.IsInitialized)
             await Task.Delay(200);
+
+        _roundsScores = new int[Data.GetLevelsAmount()];
+
+        var level = Data.GetLevel(_levelIndex);
+        _roundScore = level.MaxScore;
 
         Chat.OnMessage += Chat_OnMessage;
         _state = EGuessState.LevelIn;
@@ -57,7 +60,6 @@ public partial class Guess : ComponentBase, IAsyncDisposable
         StateHasChanged();
         await Task.Delay(500);
         _state = EGuessState.Guess;
-        _guessStartTime = _levelOutAnimTime = DateTimeOffset.UtcNow;
     }
 
     private async Task OnGuess()
@@ -65,59 +67,87 @@ public partial class Guess : ComponentBase, IAsyncDisposable
         if (_state != EGuessState.Guess)
             return;
 
-        _resultPoints = 0;
-
         var level = Data.GetLevel(_levelIndex);
         var line = Data.GetLine(_levelIndex, _lineIndex);
 
         if (Data.AreCharactersEqual(_guessInput, line.Answer))
         {
-            var minPts = level.MinScore;
-            var maxPts = level.MaxScore;
+            _resultCorrect = true;
+            _score += _roundScore;
+            _roundsScores[_levelIndex] += _roundScore;
+        }
+        else
+        {
+            _roundScore -= level.WrongPenalty;
+            if (_roundScore <= 0)
+                _roundScore = 0;
+        }
 
-            if (_revealAudio)
+        _guessInput = string.Empty;
+
+        if (_roundScore <= 0 || _resultCorrect)
+        {
+            if (_isAudioPlaying)
+                await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
+
+            foreach (var user in _chatGuesses.Values)
             {
-                minPts -= level.HintPenalty;
-                maxPts -= level.HintPenalty;
+                if (user.RoundGuessCorrect)
+                {
+                    user.TotalScore += user.RoundScore;
+                    user.RoundsScores[_levelIndex] += user.RoundScore;
+                }
+                user.RoundScore = 0;
             }
 
-            var guessTimeSpan = TimeSpan.FromMilliseconds(level.Timer);
-            var guessEndTime = _guessStartTime + guessTimeSpan;
-            var guessTimeLeft = guessEndTime - DateTimeOffset.UtcNow;
-            var guessTimeProgress = guessTimeLeft / guessTimeSpan;
-            if (guessTimeProgress < 0)
-                guessTimeProgress = 0;
-
-            _resultCorrect = Data.AreCharactersEqual(_guessInput, line.Answer);
-            _resultPoints = (int)Math.Round(minPts + (maxPts - minPts) * guessTimeProgress);
+            _state = EGuessState.GuessOut;
+            StateHasChanged();
+            await Task.Delay(300);
+            _state = EGuessState.Result;
         }
-        _score += _resultPoints;
-
-        foreach (var kv in _chatGuesses)
-        {
-            var user = kv.Value;
-            user.TotalPoints += user.RoundPoints;
-            user.RoundPoints = 0;
-        }
-
-        foreach (var kv in _useridToCharacterName)
-        {
-            if (_characterNameToGuessCount.ContainsKey(kv.Value))
-                _characterNameToGuessCount[kv.Value]++;
-            else
-                _characterNameToGuessCount[kv.Value] = 1;
-        }
-
-        _state = EGuessState.GuessOut;
-        StateHasChanged();
-        await Task.Delay(300);
-        _state = EGuessState.Result;
     }
 
-    private async void OnContinue()
+    private async Task OnAudioClick()
+    {
+        var level = Data.GetLevel(_levelIndex);
+        var line = Data.GetLine(_levelIndex, _lineIndex);
+        if (_isAudioPlaying)
+            await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
+        else if (line.Audio is not null)
+        {
+            if (!_isAudioPlayed && _state == EGuessState.Guess)
+            {
+                _roundScore -= level.AudioPenalty;
+                _isAudioPlayed = true;
+
+                foreach (var user in _chatGuesses.Values)
+                {
+                    user.RoundScore -= level.AudioPenalty;
+                    if (user.RoundScore < 0)
+                        user.RoundScore = 0;
+                }
+            }
+            _isAudioPlaying = true;
+            await Js.InvokeVoidAsync("playAudio", _thisRef, line.Audio);
+        }
+    }
+
+    [JSInvokable]
+    public void OnAudioEnded(string path)
+    {
+        _isAudioPlaying = false;
+        StateHasChanged();
+    }
+
+    private async Task OnContinue()
     {
         if (_state != EGuessState.Result)
             return;
+
+        var line = Data.GetLine(_levelIndex, _lineIndex);
+        if (_isAudioPlaying)
+            await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
+
         _state = EGuessState.ResultOut;
         StateHasChanged();
         await Task.Delay(300);
@@ -136,21 +166,29 @@ public partial class Guess : ComponentBase, IAsyncDisposable
             _state = EGuessState.LevelOut;
             StateHasChanged();
             await Task.Delay(500);
-            _levelOutAnimTime = DateTimeOffset.UtcNow;
         }
         else
             _lineIndex++;
 
+        var level = Data.GetLevel(_levelIndex);
         _state = EGuessState.Guess;
-        _guessStartTime = DateTimeOffset.UtcNow;
-        _revealAudio = false;
+        _isAudioPlayed = false;
         _guessInput = string.Empty;
         _guessedUsers.Clear();
         _useridToCharacterName.Clear();
         _characterNameToGuessCount.Clear();
         _resultCorrect = false;
-        _resultPoints = 0;
         _resultPlayVideo = false;
+        _roundScore = level.MaxScore;
+
+        if (!_isFinished)
+        {
+            foreach (var user in _chatGuesses.Values)
+            {
+                user.RoundScore = level.MaxScore;
+                user.RoundGuessCorrect = false;
+            }
+        }
     }
 
     private void Chat_OnMessage(TwitchChatMessage data)
@@ -158,59 +196,54 @@ public partial class Guess : ComponentBase, IAsyncDisposable
         if (_state != EGuessState.Guess)
             return;
         var characters = Data.GetCharacterOptions(data.Message);
-        if(characters.Count() != 1)
+        if (characters.Count() != 1)
             return;
         var character = characters.First();
+        var level = Data.GetLevel(_levelIndex);
+        var line = Data.GetLine(_levelIndex, _lineIndex);
 
         if (!_chatGuesses.ContainsKey(data.UserId))
         {
             _chatGuesses[data.UserId] = new TwitchUser
             {
                 Username = data.UserLogin,
-                DisplayName = data.UserDisplayName
+                DisplayName = data.UserDisplayName,
+                Color = data.Color,
+                RoundScore = level.MaxScore,
+                RoundsScores = new int[Data.GetLevelsAmount()]
             };
         }
 
-        _useridToCharacterName[data.UserId] = character;
-
-        var level = Data.GetLevel(_levelIndex);
-        var line = Data.GetLine(_levelIndex, _lineIndex);
-        int currentPts = 0;
-
-        if (Data.AreCharactersEqual(character, line.Answer))
+        if (_useridToCharacterName.ContainsKey(data.UserId) && _characterNameToGuessCount.ContainsKey(_useridToCharacterName[data.UserId]))
         {
-            var minPts = level.MinScore;
-            var maxPts = level.MaxScore;
-
-            if (_revealAudio)
-            {
-                minPts -= level.HintPenalty;
-                maxPts -= level.HintPenalty;
-            }
-            var guessTimeSpan = TimeSpan.FromMilliseconds(level.Timer);
-            var guessEndTime = _guessStartTime + guessTimeSpan;
-            var guessTimeLeft = guessEndTime - DateTimeOffset.UtcNow;
-            var guessTimeProgress = guessTimeLeft / guessTimeSpan;
-            if (guessTimeProgress < 0)
-                guessTimeProgress = 0;
-
-            currentPts = (int)Math.Round(minPts + (maxPts - minPts) * guessTimeProgress);
+            _characterNameToGuessCount[_useridToCharacterName[data.UserId]]--;
+            if (_characterNameToGuessCount[_useridToCharacterName[data.UserId]] <= 0)
+                _characterNameToGuessCount.Remove(_useridToCharacterName[data.UserId]);
         }
 
-        _chatGuesses[data.UserId].RoundPoints = currentPts;
+        _useridToCharacterName[data.UserId] = character;
+        if (_characterNameToGuessCount.ContainsKey(character))
+            _characterNameToGuessCount[character]++;
+        else
+            _characterNameToGuessCount[character] = 1;
+
+        if (Data.AreCharactersEqual(character, line.Answer))
+            _chatGuesses[data.UserId].RoundGuessCorrect = true;
+        else
+        {
+            _chatGuesses[data.UserId].RoundGuessCorrect = false;
+            _chatGuesses[data.UserId].RoundScore -= level.WrongPenalty;
+            if (_chatGuesses[data.UserId].RoundScore < 0)
+                _chatGuesses[data.UserId].RoundScore = 0;
+        }
+
         _guessedUsers.Add(data.UserId);
+        StateHasChanged();
     }
 
-    [JSInvokable]
-    public void OnFrame()
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public async ValueTask DisposeAsync()
+    public void Dispose()
     {
         Chat.OnMessage -= Chat_OnMessage;
-        await Js.InvokeVoidAsync("framesRemoveListener", _thisRef);
     }
 
     private enum EGuessState
@@ -222,7 +255,11 @@ public partial class Guess : ComponentBase, IAsyncDisposable
     {
         public string Username { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
-        public int TotalPoints { get; set; } = 0;
-        public int RoundPoints { get; set; } = 0;
+        public string? Color { get; set; } = string.Empty;
+        public int TotalScore { get; set; } = 0;
+        public int RoundScore { get; set; } = 0;
+        public bool RoundGuessCorrect { get; set; } = false;
+
+        public required int[] RoundsScores { get; init; }
     }
 }

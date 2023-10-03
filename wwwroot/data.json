@@ -2,10 +2,9 @@
     "levels": [
         {
             "title": "Easy",
-            "minScore": 50,
             "maxScore": 100,
-            "hintPenalty": 25,
-            "timer": 60000,
+            "wrongPenalty": 25,
+            "audioPenalty": 50,
             "lines": [
                 {
                     "text": "You forget a thousand things everyday, how about you make sure this is one of them",
@@ -29,10 +28,9 @@
         },
         {
             "title": "Normal",
-            "minScore": 100,
             "maxScore": 200,
-            "hintPenalty": 50,
-            "timer": 60000,
+            "wrongPenalty": 50,
+            "audioPenalty": 100,
             "lines": [
                 {
                     "text": "You forget a thousand things everyday, how about you make sure this is one of them",
@@ -56,10 +54,9 @@
         },
         {
             "title": "Hard",
-            "minScore": 250,
             "maxScore": 500,
-            "hintPenalty": 125,
-            "timer": 60000,
+            "wrongPenalty": 125,
+            "audioPenalty": 250,
             "lines": [
                 {
                     "text": "You forget a thousand things everyday, how about you make sure this is one of them",

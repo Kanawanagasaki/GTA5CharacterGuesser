@@ -8,4 +8,5 @@ public class TwitchChatMessage
     public required string UserId { get; init; }
     public required string UserLogin { get; init; }
     public required string UserDisplayName { get; init; }
+    public string? Color { get; init; }
 }

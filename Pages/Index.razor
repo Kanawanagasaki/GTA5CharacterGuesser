@@ -22,16 +22,48 @@
             </div>
             <div>
                 For example: if you think that line was said by Michael you need to send <i
-                    style="color: #007bff">"Michael De Santa"</i>
+                    style="color: #007bff">Michael De Santa</i>
             </div>
-            @if (_correctMessage is not null)
-            {
-                <div>
-                    <span style="color: #28a745">@(_correctMessage.UserDisplayName)</span> correctly typed <i
-                        style="color: #007bff">"@(_correctMessage.Message)"</i> in the chat with the correct formatting,
-                    this message will count in a quiz
-                </div>
-            }
+            <div>
+                @if(_correctMessage is not null)
+                {
+                    var phrase = _cheeringPhrases[Random.Shared.Next(0, _cheeringPhrases.Length)];
+                    var words = phrase.Split("{username}");
+
+                    for(int i = 0; i < words.Length; i++)
+                    {
+                        if(i != 0)
+                        {
+                            <span style='color: @(_correctMessage.Color is null ? "#28a745" : _correctMessage.Color);'>
+                                @(_correctMessage.UserDisplayName)
+                            </span>
+                        }
+                        <text>@(words[i])</text>
+                    }
+                }
+                else
+                {
+                    <br/>
+                }
+            </div>
+        </div>
+        <div>
+            <div class="chat-messages">
+                @if(_chat.Count == 0)
+                {
+                    <div class="chat-messages-hint">
+                        Try your best, chat!
+                    </div>
+                }
+                @for(int i = _chat.Count - 1; 0 <= i; i--)
+                {
+                    <div>
+                        <span style='color: @(_chat[i].Color is null ? "#28a745" : _chat[i].Color);'>
+                            @_chat[i].UserDisplayName
+                        </span>: <span>@_chat[i].Message</span>
+                    </div>
+                }
+            </div>
         </div>
     </div>
     <div class="footer">

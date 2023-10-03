@@ -3,66 +3,56 @@
 @{
     var level = Data.GetLevel(_levelIndex);
     var line = Data.GetLine(_levelIndex, _lineIndex);
-
-    var minPts = level.MinScore;
-    var maxPts = level.MaxScore;
-
-    if(_revealAudio)
-    {
-        minPts -= level.HintPenalty;
-        maxPts -= level.HintPenalty;
-    }
-
-    var headerText = $"; Line {_lineIndex + 1}/{level.Lines.Length}; Score: {_score}";
-    int headerTextLength = (int)((DateTimeOffset.UtcNow - _levelOutAnimTime) / TimeSpan.FromMilliseconds(30));
-    headerText = headerText.Substring(0, Math.Min(headerTextLength, headerText.Length));
-    
-    var guessTimeSpan = TimeSpan.FromMilliseconds(level.Timer);
-    var guessEndTime = _guessStartTime + guessTimeSpan;
-    var guessTimeLeft = guessEndTime - DateTimeOffset.UtcNow;
-    var guessTimeProgress = guessTimeLeft / guessTimeSpan;
-    if (guessTimeProgress < 0)
-        guessTimeProgress = 0;
-
-    var currentPts = (int)Math.Round(minPts + (maxPts - minPts) * guessTimeProgress);
-
     var validGuess = Data.HasCharacter(_guessInput);
+
+    var isNextLevelAnim = _state == EGuessState.ResultOut && Data.IsLastLine(_levelIndex, _lineIndex);
+
+    var headerAnimationClass = _state switch
+    {
+        EGuessState.LevelIn => "header-animate-in",
+        EGuessState.LevelOut => "header-animate-out",
+        _ => ""
+    };
+    if(isNextLevelAnim)
+        headerAnimationClass += " header-animate-result-out";
+
+    var headerGridStyle = "1fr 1fr 1fr";
+    if(_state == EGuessState.LevelIn || _state == EGuessState.LevelOut || isNextLevelAnim)
+        headerGridStyle = "1fr 0fr 0fr";
+
+    var isNotLevelAnimation = _state != EGuessState.LevelIn && _state != EGuessState.LevelOut;
 }
 
 <div class="root">
     @if(!_isFinished)
     {
-        <div class='header
-            @(_state switch
-            {
-                EGuessState.LevelIn => "header-animate-in",
-                EGuessState.LevelOut => "header-animate-out",
-                _ => ""
-            })
-            @(_state == EGuessState.ResultOut && Data.IsLastLine(_levelIndex, _lineIndex) ? "header-animate-result-out" : "")'>
-            Level @(_levelIndex + 1), @(level.Title)
-            @if (_state != EGuessState.LevelIn && _state != EGuessState.LevelOut)
-            {
-                <text>@headerText</text>
-            }
+        <div class='header @(headerAnimationClass)' style='grid-template-columns: @(headerGridStyle);'>
+            <div>
+                Level @(_levelIndex + 1), @(level.Title)
+            </div>
+            <div style='width: @(isNotLevelAnimation && !isNextLevelAnim ? "100%" : "0%");'>
+                @if(isNotLevelAnimation)
+                {
+                    <text>Line @(_lineIndex + 1)/@(level.Lines.Length)</text>
+                }
+            </div>
+            <div style='width: @(isNotLevelAnimation && !isNextLevelAnim ? "100%" : "0%");'>
+                @if(isNotLevelAnimation)
+                {
+                    <text>Score: @(_score)</text>
+                }
+            </div>
         </div>
         @if (_state == EGuessState.Guess || _state == EGuessState.GuessOut)
         {
             <div class='body @(_state == EGuessState.GuessOut ? "body-animate-out" : "")'>
-                <div class="timer">
-                    <div>
-                        @(minPts)p
+                <div class="score-bar-wrapper">
+                    <div class="score-bar-border">
+                        <div class="score-bar-red" style="width: @((double)_roundScore / (double)level.MaxScore * 100d)%;"></div>
+                        <div class="score-bar" style="width: @((double)_roundScore / (double)level.MaxScore * 100d)%;"></div>
                     </div>
-                    <div class="timer-progress-bar-wrapper">
-                        <div class="timer-progress-bar-border">
-                            <div class="timer-progress-bar" style="width: @(guessTimeProgress * 100)%;"></div>
-                        </div>
-                        <div class="timer-cursor" style="left: @(guessTimeProgress * 100)%;">
-                            @(currentPts)p
-                        </div>
-                    </div>
-                    <div>
-                        @(maxPts)p
+                    <div class="score-cursor" style="left: @((double)_roundScore / (double)level.MaxScore * 100d)%;">
+                        @(_roundScore)p
                     </div>
                 </div>
                 <div class="guess">
@@ -76,27 +66,43 @@
                                 <code>
                                     @line.Text
                                 </code>
-                                @if (!_revealAudio && line.Audio is not null)
+                                @if (line.Audio is not null && (_isAudioPlayed || level.AudioPenalty < _roundScore))
                                 {
                                     <div class="divider"></div>
-                                    <div class="audio" style="background-image: url(img/play.png);" @onclick=@(_=>_revealAudio=true)></div>
+                                    <div class="audio-wrapper" @onclick=@OnAudioClick>
+                                        <img class="audio" src=@(_isAudioPlaying ? "img/pause.png" : "img/play.png") />
+                                        @if(!_isAudioPlayed)
+                                        {
+                                            <span class="audio-pentalty">-@(level.AudioPenalty)p</span>
+                                        }
+                                    </div>
                                 }
                             </div>
-                            @if (_revealAudio)
-                            {
-                                <audio controls autoplay class="actual-audio">
-                                    <source src=@(line.Audio) type="audio/mp3">
-                                </audio>
-                            }
                         </div>
                     </div>
-                    @if(_guessedUsers.Count > 0)
-                    {
-                        <div>
-                            Chat made @(_guessedUsers.Count) guess@(_guessedUsers.Count > 1 ? "es" : "")
-                        </div>
-                    }
                 </div>
+                @if(_characterNameToGuessCount.Count > 0)
+                {
+                    var sorted = _characterNameToGuessCount
+                                    .Select(x => x.Value)
+                                    .OrderByDescending(x => x)
+                                    .Take(7)
+                                    .ToArray();
+                    var total = (double)sorted.Sum();
+                    var style = string.Join(" ", sorted.Select(x => Math.Round(x / total * 100) + "fr"));
+
+                    <div>
+                        Chat made @(_guessedUsers.Count) guess@(_guessedUsers.Count > 1 ? "es" : "")
+                    </div>
+                    <div class="chat-guesses" style=@(sorted.Length > 0 ? $"grid-template-columns:{style};" : "")>
+                        @foreach(var count in sorted)
+                        {
+                            <div>
+                                @count
+                            </div>
+                        }
+                    </div>
+                }
                 <div class="input-form">
                     <div class="guess-input-wrapper">
                         <input type="text" class="guess-input" @bind=@_guessInput @bind:event="oninput" />
@@ -142,19 +148,20 @@
                     @if(!_resultPlayVideo)
                     {
                         <div class="guess-table">
-                            <div class="guess-picture" style="background-image: url(img/characters/@(line.Answer.Replace(" ", "%20")).png);"></div>
+                            <div class="guess-picture" style='background-image: url(img/characters/@(line.Answer.Replace(" ", "%20")).png);'></div>
                             <div class="guess-content">
                                 <div class="line">
                                     <code>
                                         @line.Text
                                     </code>
+                                    @if (line.Audio is not null)
+                                    {
+                                        <div class="divider"></div>
+                                        <div class="audio-wrapper" @onclick=@OnAudioClick>
+                                            <img class="audio" src=@(_isAudioPlaying ? "img/pause.png" : "img/play.png") />
+                                        </div>
+                                    }
                                 </div>
-                                @if (line.Audio is not null)
-                                {
-                                    <audio controls class="actual-audio">
-                                        <source src=@(line.Audio) type="audio/mp3">
-                                    </audio>
-                                }
                                 @if(line.Video is not null)
                                 {
                                     <button class="small" @onclick=@(_=>_resultPlayVideo = true)>Play video</button>
@@ -175,23 +182,22 @@
                 <div class="result-chat">
                     @if(_characterNameToGuessCount.Count > 0 && !_resultPlayVideo)
                     {
-                        <div>
-                            Chat result:
-                        </div>
-
                         var sorted = _characterNameToGuessCount
                                         .Select(x => new { Name = x.Key, Count = x.Value })
                                         .OrderByDescending(x => x.Count)
-                                        .Take(5)
+                                        .Take(7)
                                         .ToArray();
                         var total = (double)sorted.Sum(x => x.Count);
                         var style = string.Join(" ", sorted.Select(x => Math.Round(x.Count / total * 100) + "fr"));
 
-                        <div class="result-chat-grid" style=@(sorted.Length > 0 ? $"grid-template-columns:{style};" : "")>
+                        <div>
+                            Chat made @(_guessedUsers.Count) guess@(_guessedUsers.Count > 1 ? "es" : "")
+                        </div>
+                        <div class="chat-guesses" style=@(sorted.Length > 0 ? $"grid-template-columns:{style};" : "")>
                             @foreach(var item in sorted)
                             {
                                 <div>
-                                    @(item.Name) - @($"{item.Count / total * 100:0.##}%")
+                                    @(item.Count) - @(item.Name)
                                 </div>
                             }
                         </div>
@@ -203,24 +209,59 @@
     }
     else
     {
-        <div class="finish">
-            <div>
-                Done, it is it, your score is @(_score) / @(Data.GetMaxPossibleScore())
-            </div>
-            @if(_chatGuesses.Count > 0)
-            {
-                <div>
-                    Here is chat results:
-                </div>
+        var results = _chatGuesses.Select(x => new
+        {
+            Name = x.Value.DisplayName,
+            Color = x.Value.Color ?? "#ffffff",
+            RoundsScores = x.Value.RoundsScores,
+            Total = x.Value.TotalScore,
+            IsMe = false
+        }).ToList();
+        results.Add(new
+        {
+            Name = "You",
+            Color = "#000000",
+            RoundsScores = _roundsScores,
+            Total = _score,
+            IsMe = true
+        });
+        results.Sort((a,b) => b.Total - a.Total);
 
-                var sorted = _chatGuesses.Values.OrderByDescending(x => x.TotalPoints).Take(6);
-                @foreach(var kv in sorted)
-                {
-                    <div>
-                        @(kv.DisplayName): @(kv.TotalPoints)
-                    </div>
-                }
-            }
+        <div class="finish">
+            <div class="finish-header">
+                Results
+            </div>
+            <div class="finish-table-wrapper">
+                <table class="finish-table">
+                    <tr>
+                        <th>Username</th>
+                        @for(int i = 0; i < Data.GetLevelsAmount(); i++)
+                        {
+                            var lvl = Data.GetLevel(i);
+
+                            <th>#@(i+1) @(lvl.Title)</th>
+                        }
+                        <th>Score</th>
+                    </tr>
+                    @for(int i = 0; i < results.Count; i++)
+                    {
+                        <tr style='@(results[i].IsMe ? "background: #ffc107; color: #000;" : "")'>
+                            <td style="color: @(results[i].Color); font-weight: bold;">
+                                @(results[i].Name)
+                            </td>
+                            @for(int j = 0; j < Data.GetLevelsAmount(); j++)
+                            {
+                                <td>
+                                    @(results[i].RoundsScores[j])
+                                </td>
+                            }
+                            <td>
+                                @(results[i].Total)
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
             <button class="finish-main-menu" @onclick=@(_=>NavMgr.NavigateTo(""))>
                 Main Menu
             </button>
