@@ -7,7 +7,7 @@
   "linkerEnabled": true,
   "resources": {
     "assembly": {
-      "GTA5CharacterGuesser.dll": "sha256-skLFlNxspoHh1ccB5DpYUu816zcMXmAgiAFCXKbUlNI=",
+      "GTA5CharacterGuesser.dll": "sha256-JckHf9GspL18pimC1ZjyL5W0pLHWfzuB6ViTZt2FJQw=",
       "Microsoft.AspNetCore.Components.dll": "sha256-CM+CCdbRO8tcBn0Er\/K5YdpSe+sYFZmPdYh3fSEZ\/Dg=",
       "Microsoft.AspNetCore.Components.Web.dll": "sha256-Qwp\/LUQPvlE\/Y2J0zcfgh9nh7YBeJx2H4j9Xo8w7hTc=",
       "Microsoft.AspNetCore.Components.WebAssembly.dll": "sha256-XYM80863rCSqPKTIFsPNKnli9FGEN6ydRhJq9gbYJAE=",
