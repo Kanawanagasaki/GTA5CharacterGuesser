@@ -2,23 +2,35 @@
 
 <div class="root">
     <div class="content">
-        <div>
-            <div style="font-size: 1.35em; margin-bottom: 1rem;">
-                The thrilling quiz game that challenges you to match GTA 5 quotes with their characters and navigate three levels of increasing difficulty.
+        <div class="info" style="transform: translateX(@(_isNextTab ? -100 : 0)%);">
+            <div>
+                The thrilling quiz game that challenges you to match GTA 5 quotes with their characters and navigate four levels of increasing difficulty.
             </div>
-            <div style="font-size: .875rem">
-                Do not be scared as you will receive some help! In exchange for points you are allowed to listen to an AI-generated audio of the quote. Every wrong guess deducts points from your score aswell! Prove your character recognition skills and rise to the top!
+            <div>
+                Do not be scared as you will receive some help!
+            </div>
+            <div>
+                In exchange for points you are allowed to listen to an AI-generated audio of the quote.
+            </div>
+            <div>
+                Every wrong guess deducts points from your score as well!
+            </div>
+            <div>
+                Prove your character recognition skills and rise to the top!
             </div>
         </div>
-        <div>
-            <h3 style="margin: 0;">
+        <div class="info chat-info" style="transform: translateX(@(_isNextTab ? 0 : 100)%);">
+            <h3 style="margin: 0; text-align:center; color: #a970ff;">
                 For Twitch chat!
             </h3>
             <div>
-                You participating as well! You will need to type the full name of the character.<br/>
-                <span style="color: yellow;">For example</span>: if you believe the quote is said by Michael, type <i style="color: #007bff">Michael De Santa</i>; by Cletus - <i style="color: #007bff">Cletus Ewing</i>
-            </div>
-            <div>
+                Dear chat, you participating as well!<br/>
+                You have to write the full name of the character who said the quote.<br/>
+                For example, if you think it was Michael, write <i style="color: #007bff">Michael De Santa</i>; by Cletus - <i style="color: #007bff">Cletus Ewing</i>.<br/>
+                But sometimes we only know the character by a nickname, like <i style="color: #007bff">Chef</i>, so that’s what you have to send in the chat.<br/>
+                You can find list with all characters here: <a style="color: #007bff" href="@(NavMgr.BaseUri)characters.txt" target="_blank">@(NavMgr.BaseUri)characters.txt</a><br/>
+                All penalties apply to you too! Guessing incorrectly or listening to the audio will deduct points from you.<br/>
+                <br/>
                 @if(_correctMessage is not null)
                 {
                     var phrase = _cheeringPhrases[Random.Shared.Next(0, _cheeringPhrases.Length)];
@@ -40,23 +52,23 @@
                     <br/>
                 }
             </div>
-        </div>
-        <div>
-            <div class="chat-messages">
-                @if(_chat.Count == 0)
-                {
-                    <div class="chat-messages-hint">
-                        Try your best, chat!
-                    </div>
-                }
-                @for(int i = _chat.Count - 1; 0 <= i; i--)
-                {
-                    <div>
-                        <span style='color: @(_chat[i].Color is null ? "#28a745" : _chat[i].Color);'>
-                            @_chat[i].UserDisplayName
-                        </span>: <span>@_chat[i].Message</span>
-                    </div>
-                }
+            <div class="chat-messages-wrapper">
+                <div class="chat-messages">
+                    @if(_chat.Count == 0)
+                    {
+                        <div class="chat-messages-hint">
+                            Try it out, chat!
+                        </div>
+                    }
+                    @for(int i = _chat.Count - 1; 0 <= i; i--)
+                    {
+                        <div>
+                            <span style='color: @(_chat[i].Color is null ? "#28a745" : _chat[i].Color);'>
+                                @_chat[i].UserDisplayName
+                            </span>: <span>@_chat[i].Message</span>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -64,7 +76,7 @@
         <button @onclick=@OnStartClick disabled=@(!Data.IsInitialized)>
             @if (Data.IsInitialized)
             {
-                <text>Start</text>
+                <text>@(_isNextTab ? "Start" : "Next")</text>
             }
             else
             {

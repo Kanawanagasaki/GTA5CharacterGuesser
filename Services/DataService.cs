@@ -2,6 +2,7 @@ namespace GTA5CharacterGuesser.Services;
 
 using System.Text.Json;
 using GTA5CharacterGuesser.Models;
+using Microsoft.JSInterop;
 
 public class DataService
 {
@@ -10,16 +11,16 @@ public class DataService
     public bool IsInitialized { get; private set; } = false;
     public bool IsInitializing { get; private set; } = false;
 
-    private HttpClient _http;
+    private IJSRuntime _js;
     private DataModel? _model;
     private (string normalized, string name)[] _characters = Array.Empty<(string, string)>();
 
-    public DataService(HttpClient http)
+    public DataService(IJSRuntime js)
     {
-        _http = http;
+        _js = js;
     }
 
-    public async Task Init()
+    public async Task Init(string key)
     {
         if (IsInitializing)
             return;
@@ -27,47 +28,24 @@ public class DataService
         IsInitializing = true;
         OnStateChange?.Invoke();
 
-        await InitData();
-        await InitCharacters();
+        await InitData(key);
 
         IsInitializing = false;
         IsInitialized = true;
         OnStateChange?.Invoke();
     }
 
-    private async Task InitData()
+    private async Task InitData(string key)
     {
         try
         {
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-
-            using var response = await _http.GetAsync("data.json");
-            if (!response.IsSuccessStatusCode)
+            await _js.InvokeVoidAsync("setupAesGcm", key);
+            _model = await _js.InvokeAsync<DataModel>("getData");
+            if (_model is null)
                 return;
-
-            var content = await response.Content.ReadAsStringAsync();
-            _model = JsonSerializer.Deserialize<DataModel>(content, jsonOptions);
-        }
-        catch { }
-    }
-
-    private async Task InitCharacters()
-    {
-        try
-        {
-            using var response = await _http.GetAsync("characters.json");
-            if (!response.IsSuccessStatusCode)
-                return;
-
-            var content = await response.Content.ReadAsStringAsync();
-            var characters = JsonSerializer.Deserialize<string[]>(content) ?? Array.Empty<string>();
-            _characters = new (string normalized, string name)[characters.Length];
+            _characters = new (string normalized, string name)[_model.Characters.Length];
             for (int i = 0; i < _characters.Length; i++)
-                _characters[i] = (NormalizeString(characters[i]), characters[i]);
-
+                _characters[i] = (NormalizeString(_model.Characters[i]), _model.Characters[i]);
         }
         catch { }
     }

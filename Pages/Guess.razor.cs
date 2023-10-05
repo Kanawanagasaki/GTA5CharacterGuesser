@@ -14,6 +14,7 @@ public partial class Guess : ComponentBase, IDisposable
     [Inject] public required NavigationManager NavMgr { get; init; }
 
     private DotNetObjectReference<Guess> _thisRef;
+    private ElementReference? _videoRef;
 
     private int _levelIndex = 0;
     private int _lineIndex = 0;
@@ -28,12 +29,13 @@ public partial class Guess : ComponentBase, IDisposable
     private string _guessInput = string.Empty;
 
     private Dictionary<string, TwitchUser> _chatGuesses = new();
-    private HashSet<string> _guessedUsers = new();
-    private Dictionary<string, string> _useridToCharacterName = new();
+    private HashSet<string> _guessedUserLogins = new();
+    private Dictionary<string, string> _loginToCharacterName = new();
     private Dictionary<string, int> _characterNameToGuessCount = new();
 
     private bool _resultCorrect = false;
     private bool _resultPlayVideo = false;
+    private bool _resultShouldLoadVideo = false;
 
     private bool _isFinished = false;
 
@@ -62,6 +64,16 @@ public partial class Guess : ComponentBase, IDisposable
         _state = EGuessState.Guess;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_resultShouldLoadVideo)
+        {
+            var line = Data.GetLine(_levelIndex, _lineIndex);
+            await Js.InvokeVoidAsync("loadVideo", _videoRef, line.Video);
+            _resultShouldLoadVideo = false;
+        }
+    }
+
     private async Task OnGuess()
     {
         if (_state != EGuessState.Guess)
@@ -78,6 +90,7 @@ public partial class Guess : ComponentBase, IDisposable
         }
         else
         {
+            _resultCorrect = false;
             _roundScore -= level.WrongPenalty;
             if (_roundScore <= 0)
                 _roundScore = 0;
@@ -87,8 +100,7 @@ public partial class Guess : ComponentBase, IDisposable
 
         if (_roundScore <= 0 || _resultCorrect)
         {
-            if (_isAudioPlaying)
-                await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
+            await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
 
             foreach (var user in _chatGuesses.Values)
             {
@@ -100,9 +112,6 @@ public partial class Guess : ComponentBase, IDisposable
                 user.RoundScore = 0;
             }
 
-            _state = EGuessState.GuessOut;
-            StateHasChanged();
-            await Task.Delay(300);
             _state = EGuessState.Result;
         }
     }
@@ -122,6 +131,8 @@ public partial class Guess : ComponentBase, IDisposable
 
                 foreach (var user in _chatGuesses.Values)
                 {
+                    if(user.RoundGuessCorrect)
+                        continue;
                     user.RoundScore -= level.AudioPenalty;
                     if (user.RoundScore < 0)
                         user.RoundScore = 0;
@@ -130,6 +141,14 @@ public partial class Guess : ComponentBase, IDisposable
             _isAudioPlaying = true;
             await Js.InvokeVoidAsync("playAudio", _thisRef, line.Audio);
         }
+    }
+
+    private async Task OnRevealVideo()
+    {
+        var line = Data.GetLine(_levelIndex, _lineIndex);
+        await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
+        _resultPlayVideo = true;
+        _resultShouldLoadVideo = true;
     }
 
     [JSInvokable]
@@ -145,12 +164,7 @@ public partial class Guess : ComponentBase, IDisposable
             return;
 
         var line = Data.GetLine(_levelIndex, _lineIndex);
-        if (_isAudioPlaying)
-            await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
-
-        _state = EGuessState.ResultOut;
-        StateHasChanged();
-        await Task.Delay(300);
+        await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
 
         if (Data.IsLastLevel(_levelIndex) && Data.IsLastLine(_levelIndex, _lineIndex))
         {
@@ -158,6 +172,9 @@ public partial class Guess : ComponentBase, IDisposable
         }
         else if (Data.IsLastLine(_levelIndex, _lineIndex))
         {
+            _state = EGuessState.PreNextLevel;
+            StateHasChanged();
+            await Task.Delay(300);
             _levelIndex++;
             _lineIndex = 0;
             _state = EGuessState.LevelIn;
@@ -174,8 +191,8 @@ public partial class Guess : ComponentBase, IDisposable
         _state = EGuessState.Guess;
         _isAudioPlayed = false;
         _guessInput = string.Empty;
-        _guessedUsers.Clear();
-        _useridToCharacterName.Clear();
+        _guessedUserLogins.Clear();
+        _loginToCharacterName.Clear();
         _characterNameToGuessCount.Clear();
         _resultCorrect = false;
         _resultPlayVideo = false;
@@ -202,42 +219,42 @@ public partial class Guess : ComponentBase, IDisposable
         var level = Data.GetLevel(_levelIndex);
         var line = Data.GetLine(_levelIndex, _lineIndex);
 
-        if (!_chatGuesses.ContainsKey(data.UserId))
+        if (!_chatGuesses.ContainsKey(data.UserLogin))
         {
-            _chatGuesses[data.UserId] = new TwitchUser
+            _chatGuesses[data.UserLogin] = new TwitchUser
             {
                 Username = data.UserLogin,
                 DisplayName = data.UserDisplayName,
                 Color = data.Color,
-                RoundScore = level.MaxScore,
+                RoundScore = _isAudioPlayed ? level.MaxScore - level.AudioPenalty : level.MaxScore,
                 RoundsScores = new int[Data.GetLevelsAmount()]
             };
         }
 
-        if (_useridToCharacterName.ContainsKey(data.UserId) && _characterNameToGuessCount.ContainsKey(_useridToCharacterName[data.UserId]))
+        if (_loginToCharacterName.ContainsKey(data.UserLogin) && _characterNameToGuessCount.ContainsKey(_loginToCharacterName[data.UserLogin]))
         {
-            _characterNameToGuessCount[_useridToCharacterName[data.UserId]]--;
-            if (_characterNameToGuessCount[_useridToCharacterName[data.UserId]] <= 0)
-                _characterNameToGuessCount.Remove(_useridToCharacterName[data.UserId]);
+            _characterNameToGuessCount[_loginToCharacterName[data.UserLogin]]--;
+            if (_characterNameToGuessCount[_loginToCharacterName[data.UserLogin]] <= 0)
+                _characterNameToGuessCount.Remove(_loginToCharacterName[data.UserLogin]);
         }
 
-        _useridToCharacterName[data.UserId] = character;
+        _loginToCharacterName[data.UserLogin] = character;
         if (_characterNameToGuessCount.ContainsKey(character))
             _characterNameToGuessCount[character]++;
         else
             _characterNameToGuessCount[character] = 1;
 
         if (Data.AreCharactersEqual(character, line.Answer))
-            _chatGuesses[data.UserId].RoundGuessCorrect = true;
+            _chatGuesses[data.UserLogin].RoundGuessCorrect = true;
         else
         {
-            _chatGuesses[data.UserId].RoundGuessCorrect = false;
-            _chatGuesses[data.UserId].RoundScore -= level.WrongPenalty;
-            if (_chatGuesses[data.UserId].RoundScore < 0)
-                _chatGuesses[data.UserId].RoundScore = 0;
+            _chatGuesses[data.UserLogin].RoundGuessCorrect = false;
+            _chatGuesses[data.UserLogin].RoundScore -= level.WrongPenalty;
+            if (_chatGuesses[data.UserLogin].RoundScore < 0)
+                _chatGuesses[data.UserLogin].RoundScore = 0;
         }
 
-        _guessedUsers.Add(data.UserId);
+        _guessedUserLogins.Add(data.UserLogin);
         StateHasChanged();
     }
 
@@ -248,7 +265,7 @@ public partial class Guess : ComponentBase, IDisposable
 
     private enum EGuessState
     {
-        LevelIn, LevelOut, Guess, GuessOut, Result, ResultOut
+        LevelIn, LevelOut, Guess, Result, PreNextLevel
     }
 
     private class TwitchUser

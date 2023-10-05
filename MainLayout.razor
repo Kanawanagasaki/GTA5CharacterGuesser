@@ -9,7 +9,22 @@
                     GTA 5 Character Guesser
                 </div>
                 <div class="body">
-                    @Body
+                    @if (_shouldAskKey)
+                    {
+                        <div class="key-form-wrapper">
+                            <div class="key-form">
+                                <div>
+                                    Please enter password
+                                </div>
+                                <input class="key-input" type="password" @bind=@_key />
+                                <button class="small" @onclick=@OnContinue>Continue</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @Body
+                    }
                 </div>
             </div>
         </div>

@@ -50,6 +50,26 @@
     flex-grow: 1;
 }
 
+.key-form-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.key-form {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.key-input {
+    font-size: 1rem;
+    padding: .5rem .5rem;
+    width: 368px;
+}
+
 .footer {
     display: flex;
     justify-content: end;

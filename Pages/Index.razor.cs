@@ -10,6 +10,8 @@ public partial class Index : ComponentBase
     [Inject] public required DataService Data { get; init; }
     [Inject] public required TwitchChatService Chat { get; init; }
 
+    private bool _isNextTab = false;
+
     private TwitchChatMessage? _correctMessage;
     private List<TwitchChatMessage> _chat = new();
 
@@ -25,7 +27,6 @@ public partial class Index : ComponentBase
         "Keep it up, {username}!",
         "{username}, you have the power!",
         "Great work, {username}!",
-        "{username}, you are a champ!",
         "Well done, {username}!",
         "{username}, you are a legend!",
         "Bravo, {username}!",
@@ -41,11 +42,11 @@ public partial class Index : ComponentBase
 
     private void Chat_OnMessage(TwitchChatMessage data)
     {
-        if(Data.HasCharacter(data.Message))
+        if (Data.HasCharacter(data.Message))
         {
             _correctMessage = data;
             _chat.Add(_correctMessage);
-            while(_chat.Count > 20)
+            while (_chat.Count > 20)
                 _chat.RemoveAt(0);
             InvokeAsync(StateHasChanged);
         }
@@ -53,7 +54,9 @@ public partial class Index : ComponentBase
 
     private void OnStartClick()
     {
-        if (Data.IsInitialized)
+        if (!_isNextTab)
+            _isNextTab = true;
+        else if (Data.IsInitialized)
             NavMgr.NavigateTo("guess");
     }
 }
