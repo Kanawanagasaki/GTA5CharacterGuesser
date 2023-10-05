@@ -6,6 +6,8 @@ const client = new tmi.Client({
     channels: ["darkviperau"]
 });
 var reconnectTimeout = null;
+var AesGcmKey = null;
+var AesGcmIv = null;
 
 client.on('message', async (channel, tags, message, self) => {
     for (const listener of twitchChatListeners) {
@@ -67,25 +69,82 @@ function framesRemoveListener(dotnetRef) {
         framesListeners.splice(index, 1);
 }
 
-function playAudio(dotnetRef, path) {
-    if (!audioMap[path])
-    {
-        audioMap[path] = new Audio(path);
-        audioMap[path].volume = .5;
-        audioMap[path].addEventListener("ended", async () => {
-            await dotnetRef.invokeMethodAsync("OnAudioEnded", path);
+async function playAudio(dotnetRef, filename) {
+    if (!audioMap[filename]) {
+        audioMap[filename] = new Audio();
+        audioMap[filename].addEventListener("ended", async () => {
+            await dotnetRef.invokeMethodAsync("OnAudioEnded", filename);
         });
+
+        const arrayBuffer = await fetchAndDecrypt("encrypted/" + filename);
+        if (arrayBuffer) {
+            const blob = new Blob([arrayBuffer]);
+            audioMap[filename].src = URL.createObjectURL(blob);
+        }
     }
 
-    audioMap[path].currentTime = 0;
-    audioMap[path].play();
+    audioMap[filename].currentTime = 0;
+    audioMap[filename].play();
 }
 
-async function stopAudio(dotnetRef, path) {
-    if (!audioMap[path])
+async function stopAudio(dotnetRef, filename) {
+    if (!audioMap[filename])
         return;
 
-    audioMap[path].pause();
-    audioMap[path].currentTime = 0;
-    await dotnetRef.invokeMethodAsync("OnAudioEnded", path);
+    audioMap[filename].pause();
+    audioMap[filename].currentTime = 0;
+    await dotnetRef.invokeMethodAsync("OnAudioEnded", filename);
 }
+
+async function loadVideo(videoEl, filename) {
+    const arrayBuffer = await fetchAndDecrypt("encrypted/" + filename);
+    const blob = new Blob([arrayBuffer]);
+    videoEl.src = URL.createObjectURL(blob);
+    videoEl.play();
+}
+
+async function setupAesGcm(input) {
+    try {
+        if (typeof input !== "string")
+            return;
+        if (input.length == 0)
+            return;
+        while (input.length < 48)
+            input += input;
+        if (input.length > 48)
+            input = input.substring(0, 48);
+        const textEncoder = new TextEncoder();
+        var inputBuffer = textEncoder.encode(input.substring(0, 32));
+        AesGcmKey = await crypto.subtle.importKey("raw", inputBuffer, "AES-GCM", false, ["decrypt"]);
+        AesGcmIv = textEncoder.encode(input.substring(32, 48));
+    }
+    catch
+    {
+        AesGcmKey = null;
+        AesGcmIv = null;
+    }
+}
+
+async function getData() {
+    try {
+        if (AesGcmKey === null || AesGcmIv === null)
+            return null;
+
+        const decrypted = await fetchAndDecrypt("encrypted/data.bin");
+        if (decrypted === null)
+            return null;
+        return JSON.parse(new TextDecoder().decode(decrypted));
+    }
+    catch {
+        return null;
+    }
+}
+
+async function fetchAndDecrypt(url) {
+    const response = await fetch(url);
+    if (!response.ok)
+        return null;
+    const encrypted = await response.arrayBuffer();
+    return await crypto.subtle.decrypt({ name: "AES-GCM", iv: AesGcmIv }, AesGcmKey, encrypted);
+}
+
