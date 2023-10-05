@@ -2,6 +2,14 @@ const twitchChatListeners = [];
 const framesListeners = [];
 const audioMap = {};
 
+const videoDescription = {
+    filename: null,
+    controller: null,
+    signal: null,
+    isDownloaded: false,
+    bytes: null
+};
+
 const client = new tmi.Client({
     channels: ["darkviperau"]
 });
@@ -69,6 +77,24 @@ function framesRemoveListener(dotnetRef) {
         framesListeners.splice(index, 1);
 }
 
+async function prepareAudio(dotnetRef, filename) {
+    if (!audioMap[filename]) {
+        audioMap[filename] = new Audio();
+        audioMap[filename].addEventListener("ended", async () => {
+            await dotnetRef.invokeMethodAsync("OnAudioEnded", filename);
+        });
+
+        const arrayBuffer = await fetchAndDecrypt("encrypted/" + filename);
+        if (arrayBuffer) {
+            const blob = new Blob([arrayBuffer]);
+            audioMap[filename].src = URL.createObjectURL(blob);
+        }
+    }
+
+    audioMap[filename].pause();
+    audioMap[filename].currentTime = 0;
+}
+
 async function playAudio(dotnetRef, filename) {
     if (!audioMap[filename]) {
         audioMap[filename] = new Audio();
@@ -96,11 +122,54 @@ async function stopAudio(dotnetRef, filename) {
     await dotnetRef.invokeMethodAsync("OnAudioEnded", filename);
 }
 
-async function loadVideo(videoEl, filename) {
-    const arrayBuffer = await fetchAndDecrypt("encrypted/" + filename);
-    const blob = new Blob([arrayBuffer]);
-    videoEl.src = URL.createObjectURL(blob);
-    videoEl.play();
+async function prepareVideo(dotnetRef, filename) {
+    try {
+        if (videoDescription.filename == filename)
+            return;
+
+        if (videoDescription.controller)
+            videoDescription.controller.abort();
+
+        videoDescription.isDownloaded = false;
+
+        videoDescription.filename = filename;
+        videoDescription.controller = new AbortController();
+        videoDescription.signal = videoDescription.controller.signal;
+
+        videoDescription.bytes = await fetchAndDecrypt("encrypted/" + filename, videoDescription.signal);
+        videoDescription.isDownloaded = true;
+        await dotnetRef.invokeMethodAsync("OnVideoPrepared", filename);
+    }
+    catch
+    {
+        videoDescription.isDownloaded = false;
+    }
+}
+
+async function loadVideo(dotnetRef, videoEl, filename) {
+    if (videoDescription.filename != filename)
+        await prepareVideo(dotnetRef, filename);
+
+    const onReady = () => {
+        const blob = new Blob([videoDescription.bytes]);
+        videoEl.src = URL.createObjectURL(blob);
+        videoEl.play();
+    };
+
+    if(videoDescription.filename == filename && videoDescription.isDownloaded)
+        onReady();
+    else
+    {
+        const intervalId = setInterval(() => {
+            if (!videoDescription.isDownloaded)
+                return;
+    
+            clearInterval(intervalId);
+
+            if(filename == videoDescription.filename)
+                onReady();
+        }, 200);
+    }
 }
 
 async function setupAesGcm(input) {
@@ -140,8 +209,8 @@ async function getData() {
     }
 }
 
-async function fetchAndDecrypt(url) {
-    const response = await fetch(url);
+async function fetchAndDecrypt(url, signal = null) {
+    const response = await fetch(url, { method: "get", signal });
     if (!response.ok)
         return null;
     const encrypted = await response.arrayBuffer();

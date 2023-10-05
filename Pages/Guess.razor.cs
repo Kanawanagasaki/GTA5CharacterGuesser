@@ -36,6 +36,7 @@ public partial class Guess : ComponentBase, IDisposable
     private bool _resultCorrect = false;
     private bool _resultPlayVideo = false;
     private bool _resultShouldLoadVideo = false;
+    private bool _isVideoPreparing = false;
 
     private bool _isFinished = false;
 
@@ -52,6 +53,8 @@ public partial class Guess : ComponentBase, IDisposable
         _roundsScores = new int[Data.GetLevelsAmount()];
 
         var level = Data.GetLevel(_levelIndex);
+        var line = Data.GetLine(_levelIndex, _lineIndex);
+
         _roundScore = level.MaxScore;
 
         Chat.OnMessage += Chat_OnMessage;
@@ -62,6 +65,12 @@ public partial class Guess : ComponentBase, IDisposable
         StateHasChanged();
         await Task.Delay(500);
         _state = EGuessState.Guess;
+
+        StateHasChanged();
+
+        _ = Js.InvokeVoidAsync("prepareAudio", _thisRef, line.Audio);
+        _ = Js.InvokeVoidAsync("prepareVideo", _thisRef, line.Video);
+        _isVideoPreparing = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -69,7 +78,7 @@ public partial class Guess : ComponentBase, IDisposable
         if (_resultShouldLoadVideo)
         {
             var line = Data.GetLine(_levelIndex, _lineIndex);
-            await Js.InvokeVoidAsync("loadVideo", _videoRef, line.Video);
+            await Js.InvokeVoidAsync("loadVideo", _thisRef, _videoRef, line.Video);
             _resultShouldLoadVideo = false;
         }
     }
@@ -131,7 +140,7 @@ public partial class Guess : ComponentBase, IDisposable
 
                 foreach (var user in _chatGuesses.Values)
                 {
-                    if(user.RoundGuessCorrect)
+                    if (user.RoundGuessCorrect)
                         continue;
                     user.RoundScore -= level.AudioPenalty;
                     if (user.RoundScore < 0)
@@ -149,6 +158,15 @@ public partial class Guess : ComponentBase, IDisposable
         await Js.InvokeVoidAsync("stopAudio", _thisRef, line.Audio);
         _resultPlayVideo = true;
         _resultShouldLoadVideo = true;
+    }
+
+    [JSInvokable]
+    public void OnVideoPrepared(string filename)
+    {
+        var line = Data.GetLine(_levelIndex, _lineIndex);
+        if (filename == line.Video)
+            _isVideoPreparing = false;
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -188,6 +206,7 @@ public partial class Guess : ComponentBase, IDisposable
             _lineIndex++;
 
         var level = Data.GetLevel(_levelIndex);
+        line = Data.GetLine(_levelIndex, _lineIndex);
         _state = EGuessState.Guess;
         _isAudioPlayed = false;
         _guessInput = string.Empty;
@@ -206,6 +225,12 @@ public partial class Guess : ComponentBase, IDisposable
                 user.RoundGuessCorrect = false;
             }
         }
+
+        StateHasChanged();
+
+        _ = Js.InvokeVoidAsync("prepareAudio", _thisRef, line.Audio);
+        _ = Js.InvokeVoidAsync("prepareVideo", _thisRef, line.Video);
+        _isVideoPreparing = true;
     }
 
     private void Chat_OnMessage(TwitchChatMessage data)

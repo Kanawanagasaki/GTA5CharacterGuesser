@@ -93,6 +93,12 @@
             {
                 <div class="result-video">
                     <video width="600" controls @ref=@_videoRef></video>
+                    @if(_isVideoPreparing)
+                    {
+                        <div style="color: #dc3545;">
+                            Downloading video...
+                        </div>
+                    }
                     <button class="small" @onclick=@(_=>_resultPlayVideo = false)>Hide video</button>
                 </div>
             }
